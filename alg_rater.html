@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALG RATER</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0a0b0d;
+            --surface: #111318;
+            --border: #1e2330;
+            --accent: #00e5a0;
+            --accent2: #ff4d6d;
+            --accent3: #5b8dee;
+            --text: #c8d0e0;
+            --text-dim: #8b9cba;
+            --text-bright: #eef2ff;
+            --grid: #141720;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.08) 2px,
+                    rgba(0, 0, 0, 0.08) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .header {
+            border-bottom: 1px solid var(--border);
+            padding: 18px 32px;
+            display: flex;
+            align-items: baseline;
+            gap: 20px;
+            background: var(--surface);
+        }
+
+        .header h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .header span {
+            color: var(--text-dim);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            grid-template-rows: auto auto;
+            min-height: calc(100vh - 57px);
+        }
+
+        /* ---- LEFT PANELS ---- */
+        .alg-panel {
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 20px;
+            background: var(--surface);
+        }
+
+        .weights-panel {
+            border-right: 1px solid var(--border);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: var(--surface);
+        }
+
+        .section-label {
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .section-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .section-label-row .section-label {
+            margin-bottom: 0;
+        }
+
+        .sort-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .sort-btn:hover {
+            color: var(--text-bright);
+            border-color: var(--text-dim);
+        }
+
+        .sort-btn.active {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            padding: 12px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.7;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        textarea::placeholder {
+            color: var(--text-dim);
+        }
+
+        /* ---- SLIDERS ---- */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-name {
+            font-size: 11px;
+            color: var(--text-bright);
+            letter-spacing: 0.1em;
+        }
+
+        .slider-name em {
+            font-style: normal;
+            font-size: 9px;
+            color: var(--text-dim);
+            margin-left: 6px;
+        }
+
+        .slider-num {
+            width: 52px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-align: right;
+            padding: 3px 6px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .slider-num:focus {
+            border-color: var(--accent);
+        }
+
+        .slider-track {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 2px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 0;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+
+        input[type=range].w2::-webkit-slider-thumb {
+            background: var(--accent2);
+        }
+
+        input[type=range].w3::-webkit-slider-thumb {
+            background: var(--accent3);
+        }
+
+        .slider-color-1 {
+            color: var(--accent);
+        }
+
+        .slider-color-2 {
+            color: var(--accent2);
+        }
+
+        .slider-color-3 {
+            color: var(--accent3);
+        }
+
+        .slider-num.c1 {
+            color: var(--accent);
+            border-color: #1a3d2e;
+        }
+
+        .slider-num.c2 {
+            color: var(--accent2);
+            border-color: #3d1a22;
+        }
+
+        .slider-num.c3 {
+            color: var(--accent3);
+            border-color: #1a2440;
+        }
+
+        /* ---- RIGHT PANELS ---- */
+        .results-panel {
+            padding: 24px 28px 16px;
+            background: var(--bg);
+            background-image:
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: -1px -1px;
+        }
+
+        .graph-panel {
+            padding: 16px 28px 24px;
+            background: var(--bg);
+            background-image:
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: -1px -1px;
+        }
+        /* ---- RESULTS TABLE ---- */
+        .results-table {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .results-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th {
+            background: var(--bg);
+            color: var(--text-dim);
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            padding: 8px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-weight: 400;
+        }
+
+        .results-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            vertical-align: middle;
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .results-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .alg-cell {
+            color: var(--accent);
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            word-break: break-all;
+        }
+
+        .num-cell {
+            text-align: right;
+            color: var(--text-bright);
+        }
+
+        .final-cell {
+            text-align: right;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .final-pos {
+            color: var(--accent);
+        }
+
+        .final-neg {
+            color: var(--accent2);
+        }
+
+        .error-cell {
+            color: var(--accent2);
+            font-size: 11px;
+        }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+
+        /* ---- CHART ---- */
+        .chart-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px;
+            position: relative;
+            min-height: 300px;
+        }
+
+        .chart-title {
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>ALG RATER</h1>
+        <span>// Square-1 Algorithm Ergonomics Analyzer</span>
+    </div>
+
+    <div class="layout">
+        <!-- top-left: alg input -->
+        <div class="alg-panel">
+            <div class="section-label">// Algorithms</div>
+            <textarea id="algInput" placeholder="enter algs here&#10;one per line&#10;e.g. /3,3/-3,0/..."
+                spellcheck="false">
+                0-1\B u' D U' u d' u 01
+                10/(T T') D' (D M' t M' F U2) -10
+                10/W u -5-2 W e -10
+                0-1\T' M' D' U w' 01
+                10\B d u' -4-4 u2' -10
+                10/M' F M' U E M e U2 -10
+                10/D e' F' u' M' u' -10
+                0-1 b' U D' U m' -45 01
+                10/(u M U') d (U' e D') 01
+                10/(U e' u T') u (D e' U) 01
+                10/W u f W' e' -10
+                0-1/b' D' d' d2 01
+                10/(u m' D) d (U' e D') 01
+            </textarea>
+        </div>
+
+        <!-- top-right: results -->
+        <div class="results-panel">
+            <div class="section-label-row">
+                <div class="section-label">// Results</div>
+                <button id="sortToggle" class="sort-btn">sort by FINAL: OFF</button>
+            </div>
+            <div class="results-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Algorithm (normalized)</th>
+                            <th>Breakdown</th>
+                            <th>FINAL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <tr>
+                            <td colspan="4" class="empty-state">// awaiting input</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- bottom-left: weights -->
+        <div class="weights-panel">
+            <div class="section-label">// Weights</div>
+            <div class="slider-group">
+                <div class="slider-row">
+                    <div class="slider-row-top">
+                        <span class="slider-name slider-color-1">WEIGHT<sub>1</sub> <em>ergonomics</em></span>
+                        <input type="number" class="slider-num c1" id="w1num" min="0" max="100" value="15" />
+                    </div>
+                    <div class="slider-track">
+                        <input type="range" id="w1" min="0" max="100" value="15" />
+                    </div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-row-top">
+                        <span class="slider-name slider-color-2">WEIGHT<sub>2</sub> <em>slice count</em></span>
+                        <input type="number" class="slider-num c2" id="w2num" min="0" max="100" value="100" />
+                    </div>
+                    <div class="slider-track">
+                        <input type="range" class="w2" id="w2" min="0" max="100" value="100" />
+                    </div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-row-top">
+                        <span class="slider-name slider-color-3">WEIGHT<sub>3</sub> <em>movement</em></span>
+                        <input type="number" class="slider-num c3" id="w3num" min="0" max="100" value="10" />
+                    </div>
+                    <div class="slider-track">
+                        <input type="range" class="w3" id="w3" min="0" max="100" value="10" />
+                    </div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-row-top">
+                        <span class="slider-name slider-color-4">WEIGHT<sub>4</sub> <em>constant</em></span>
+                        <input type="number" class="slider-num c4" id="w4num" min="0" max="1000" value="900" />
+                    </div>
+                    <div class="slider-track">
+                        <input type="range" class="w4" id="w4" min="0" max="1000" value="900" />
+                    </div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-row-top">
+                        <span class="slider-name slider-color-5">WEIGHT<sub>5</sub> <em>bonus</em></span>
+                        <input type="number" class="slider-num c5" id="w5num" min="0" max="30" value="10" />
+                    </div>
+                    <div class="slider-track">
+                        <input type="range" class="w5" id="w5" min="0" max="30" value="10" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- bottom-right: graph -->
+        <div class="graph-panel">
+            <div class="section-label">// FINAL Score Graph</div>
+            <div class="chart-wrap">
+                <canvas id="algChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // CORE LOGIC (translated from Python)
+        // ============================================================
+
+        function legal_move(m) {
+            if (m < -5) return m + 12;
+            if (m > 6) return m - 12;
+            return m;
+        }
+
+        function dict_replace(s, d) {
+            const keys = Object.keys(d);
+            const pattern = new RegExp(keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+            let prev = null;
+            while (prev !== s) {
+                prev = s;
+                s = s.replace(pattern, m => d[m]);
+            }
+            return s;
+        }
+
+        function ob_karn(a) {
+            return /[a-zA-Z]/.test(a);
+        }
+
+        function add_commas(scramble) {
+            const sep = scramble.includes(" / ") ? " / " : scramble.includes("/") ? "/" : " ";
+            const ret = scramble.split(sep);
+            for (let i = 0; i < ret.length; i++) {
+                const m = ret[i];
+                if (m.includes(",") || m.toLowerCase() === "a") continue;
+                switch (m.length) {
+                    case 2: ret[i] = m[0] + "," + m[1]; break;
+                    case 3: ret[i] = m[0] === "-" ? m.slice(0, 2) + "," + m[2] : m[0] + "," + m.slice(1); break;
+                    case 4: ret[i] = m.slice(0, 2) + "," + m.slice(2); break;
+                    default: throw new Error("Invalid move: " + m);
+                }
+            }
+            return ret.join(sep);
+        }
+
+        function karnify(scramble) {
+            const sep = scramble.includes(" / ") ? " / " : scramble.includes("/") ? "/" : " ";
+            scramble = dict_replace(" " + scramble.replace(new RegExp(sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), " ") + " ", INV_NORM).replace(/,/g, "").trim();
+            scramble = scramble.replace(/ +/g, " ");
+            return scramble;
+        }
+
+        function unkarnify(scramble) {
+            const replaced = dict_replace(dict_replace(" " + scramble + " ", NORM), NORM);
+            const parts = replaced.split(" ").filter(a => a);
+            return add_commas(parts.join(" / "));
+        }
+
+        function compl(a) {
+            const l = a.split(",");
+            return [legal_move(6 + parseInt(l[0])), legal_move(6 + parseInt(l[1]))].join(",");
+        }
+
+        function l_f(a) {
+            const l = a.split(",");
+            return [l[1], l[0]].join(",");
+        }
+
+        function add_moves(m1, m2) {
+            const a = m1.split(",").map(Number);
+            const b = m2.split(",").map(Number);
+            const top = [a[0], b[0]];
+            const bottom = [a[1], b[1]];
+            const [[finalU, bonusU], [finalD, bonusD]] = [top, bottom].map((ms) => {
+                let close1 = CLOSEST[ms[0]];
+                let close2 = CLOSEST[ms[1]];
+                let bonus = parseInt(ms[0]) + parseInt(ms[1]) === 0 ? 1 : 0;
+                if (Math.abs(close1+close2) > 3 &&
+                    Math.abs(close1) > 0 && Math.abs(close2) > 0) return [Math.abs(ms[0] + ms[1]), bonus];
+                return [0, bonus];
+            })
+            return [finalU + finalD, bonusU + bonusD];
+        }
+
+        const GOOD = [
+            "1,1", "-1,-1", "2,2", "-2,-2",
+            "2,-1", "-2,1", "1,-2", "-1,2",
+            "3,0", "-3,0", "0,3", "0,-3", "3,3", "3,-3", "-3,-3", "-3,3",
+            "4,1", "-4,-1", "1,4", "-1,-4",
+            "2,-4", "-2,4", "4,-2", "-4,2",
+            "5,-1", "-5,1",
+            "-4,-4"
+        ];
+
+        const CLOSEST = {
+            "-5": 6, "-4": -3, "-3": -3, "-2": -3, "-1": 0, "0": 0,
+            "1": 0, "2": 3, "3": 3, "4": 3, "5": 6, "6": 6
+        };
+
+        function normalize(a, k, leave) {
+            a = a.replace(/\[.*?\]|\(|\)/g, "").trim().replace(/\\/g, " ");
+            const k_i = ob_karn(a);
+            if (k === null || k === undefined) k = k_i;
+
+            if (k_i) {
+                a = a.replace(/\//g, " ");
+                a = dict_replace(a, NORM);
+            } else {
+                if (a.includes("/")) {
+                    a = a.replace(/ /g, "");
+                    a = a.split("/").map(i => {
+                        const s = i.split(",");
+                        return legal_move(parseInt(s[0])) + "," + legal_move(parseInt(s[1]));
+                    }).join("/");
+                    a = a.replace(/\//g, " ");
+                } else {
+                    a = a.replace(/ +/g, " ");
+                    a = a.split(" ").map(i => {
+                        const s = i.split(",");
+                        return legal_move(parseInt(s[0])) + "," + legal_move(parseInt(s[1]));
+                    }).join(" ");
+                }
+            }
+            a = add_commas(a.replace(/,/g, ""));
+
+            let alst = a.split(" ");
+            const lastParts = alst[alst.length - 1].split(",");
+            alst[alst.length - 1] = parseInt(lastParts[lastParts.length - 1]) % 3 === 0 ? "-1,0" : "0,1";
+
+            // let l_fing = false;
+            // let facing_d = false;
+            // for (let i = 1; i < alst.length - 2; i++) {
+            //     let m = alst[i];
+            //     m = facing_d ? l_f(m) : m;
+            //     if (!leave && !GOOD.includes(m)) {
+            //         m = compl(m);
+            //         l_fing = !l_fing;
+            //     }
+            //     facing_d = l_fing ? !facing_d : facing_d;
+            //     alst[i] = m;
+            // }
+            // alst[alst.length - 2] = facing_d ? l_f(alst[alst.length - 2]) : alst[alst.length - 2];
+            // alst[alst.length - 2] = (l_fing === facing_d) ? alst[alst.length - 2] : compl(alst[alst.length - 2]);
+            // const last_move = alst[alst.length - 2];
+            a = alst.join("/");
+
+            if (k) {
+                a = a.replace(/ /g, "/");
+                a = karnify(a);
+            }
+            let comment = "";
+            // if (![...GOOD, "-4,5", "-5,4", "6,3", "-1,5"].includes(last_move)) comment += " (bad finish)";
+            // if (alst[0].slice(-1) !== a.slice(-1)) comment += " (alignment changes)";
+            return a + comment;
+        }
+
+        // ---- DICTIONARIES ----
+        const INV_NORM = {
+            " U U' U U' ": " U4 ", " U' U U' U ": " U4' ",
+            " D D' D D' ": " D4 ", " D' D D' D ": " D4' ",
+            " u u' u u' ": " u4 ", " u' u u' u ": " u4' ",
+            " d d' d d' ": " d4 ", " d' d d' d ": " d4' ",
+            " U U' U ": " U3 ", " U' U U' ": " U3' ",
+            " D D' D ": " D3 ", " D' D D' ": " D3' ",
+            " u u' u ": " u3 ", " u' u u' ": " u3' ",
+            " d d' d ": " d3 ", " d' d d' ": " d3' ",
+            " F F' F ": " F3 ", " F' F F' ": " F3' ",
+            " f f' f ": " f3 ", " f' f f' ": " f3' ",
+            " U U' ": " W ", " U' U ": " W' ",
+            " D D' ": " B ", " D' D ": " B' ",
+            " u u' ": " w ", " u' u ": " w' ",
+            " d d' ": " b ", " d' d ": " b' ",
+            " F F' ": " F2 ", " F' F ": " F2' ",
+            " f f' ": " f2 ", " f' f ": " f2' ",
+            " U U ": " UU ", " U' U' ": " UU' ",
+            " D D ": " DD ", " D' D' ": " DD' ",
+            " 6,0 ": " U2 ", " 6,3 ": " U2D ", " 6,-3 ": " U2D' ", " 6,6 ": " U2D2 ",
+            " 0,6 ": " D2 ", " 3,6 ": " UD2 ", " -3,6 ": " U'D2 ",
+            " 3,0 ": " U ", " -3,0 ": " U' ", " 0,3 ": " D ", " 0,-3 ": " D' ",
+            " 3,-3 ": " E ", " -3,3 ": " E' ", " 3,3 ": " e ", " -3,-3 ": " e' ",
+            " 2,-1 ": " u ", " -1,2 ": " d ", " -4,-1 ": " F' ", " -1,-4 ": " f' ",
+            " 2,-4 ": " T ", " -4,2 ": " t' ", " 2,2 ": " m ", " -1,-1 ": " M' ",
+            " 5,-1 ": " u2 ", " -1,5 ": " d2 ", " -2,1 ": " u' ", " 1,-2 ": " d' ",
+            " 4,1 ": " F ", " 1,4 ": " f ", " -2,4 ": " T' ", " 4,-2 ": " t ",
+            " -2,-2 ": " m' ", " 1,1 ": " M ", " -5,1 ": " u2' ", " 1,-5 ": " d2' ",
+            " -5,-2 ": " K' ", " 5,2 ": " K ", " 2,5 ": " k ", " -2,-5 ": " k' "
+        };
+        const NORM = Object.fromEntries(Object.entries(INV_NORM).map(([k, v]) => [v, k]));
+
+        const ALIGNMENT = ["a", "A"];
+        const SLICESTARTS = ["\\", "/"];
+
+        const MOVE_VALUES = {
+            "A/0,3": 9,    "a/0,3": 3,    "A\\0,3": 10,   "a\\0,3": 3,
+            "A/0,6": 1,    "a/0,6": 5,    "A\\0,6": 2,    "a\\0,6": 5,
+            "A/0,-3": 9,   "a/0,-3": 6,   "A\\0,-3": 5,   "a\\0,-3": 6,
+            "A/3,0": 7,    "a/3,0": 8,    "A\\3,0": 3,    "a\\3,0": 8,
+            "A/3,3": 4,    "a/3,3": 3,    "A\\3,3": 7,    "a\\3,3": 6,
+            "A/3,6": 1,    "a/3,6": 3,    "A\\3,6": 2,    "a\\3,6": 2,
+            "A/3,-3": 7,   "a/3,-3": 4,   "A\\3,-3": 5,   "a\\3,-3": 3,
+            "A/6,0": 6,    "a/6,0": 2,    "A\\6,0": 7,    "a\\6,0": 2,
+            "A/6,3": 7,    "a/6,3": 1,    "A\\6,3": 8,    "a\\6,3": 1,
+            "A/6,6": 1,    "a/6,6": 0,    "A\\6,6": 3,    "a\\6,6": 1,
+            "A/6,6": 1,    "a/6,6": 0,    "A\\6,6": 3,    "a\\6,6": 1,
+            "A/6,-3": 5,   "a/6,-3": 2,   "A\\6,-3": 3,   "a\\6,-3": 1,
+            "A/-3,0": 3,   "a/-3,0": 10,  "A\\-3,0": 5,   "a\\-3,0": 7,
+            "A/-3,3": 5,   "a/-3,3": 4,   "A\\-3,3": 7,   "a\\-3,3": 5,
+            "A/-3,6": 3,   "a/-3,6": 6,   "A\\-3,6": 3,   "a\\-3,6": 1,
+            "A/-3,-3": 4,  "a/-3,-3": 6,  "A\\-3,-3": 3,  "a\\-3,-3": 3,
+            "/1,-2": 2,    "\\1,-2": 7,   "/-1,2": 9,     "\\-1,2": 5,
+            "/1,-5": 1,    "\\1,-5": 1,   "/-1,5": 5,     "\\-1,5": 2,
+            "/1,4": 4,     "\\1,4": 7,    "/-1,-4": 6,    "\\-1,-4": 2,
+            "/1,1": 2,     "\\1,1": 10,   "/-1,-1": 10,   "\\-1,-1": 2,
+            "/2,-1": 10,   "\\2,-1": 3,   "/-2,1": 7,     "\\-2,1": 9,
+            "/2,2": 5,     "\\2,2": 5,    "/-2,-2": 7,    "\\-2,-2": 2,
+            "/2,5": 5,     "\\2,5": 3,    "/-2,-5": 4,    "\\-2,-5": 4,
+            "/2,-4": 7,    "\\2,-4": 3,   "/-2,4": 6,     "\\-2,4": 8,
+            "/4,4": 3,     "\\4,4": 7,    "/-4,-4": 6,    "\\-4,-4": 2,
+            "/4,1": 3,     "\\4,1": 6,    "/-4,-1": 8,    "\\-4,-1": 2,
+            "/4,-2": 6,    "\\4,-2": 5,   "/-4,2": 8,     "\\-4,2": 6,
+            "/4,-5": 1,    "\\4,-5": 2,   "/-4,5": 7,     "\\-4,5": 3,
+            "/5,5": 1,     "\\5,5": 1,    "/-5,-5": 1,    "\\-5,-5": 0,
+            "/5,2": 3,     "\\5,2": 5,    "/-5,-2": 6,    "\\-5,-2": 7,
+            "/5,-1": 5,    "\\5,-1": 3,   "/-5,1": 6,     "\\-5,1": 7,
+            "/5,-4": 2,    "\\5,-4": 1,   "/-5,4": 6,     "\\-5,4": 7
+        };
+
+        function get_move_value(startA, upslice, m) {
+            const ms = m.split(",");
+            if (parseInt(ms[0]) % 3 === 0) {
+                return MOVE_VALUES[ALIGNMENT[startA ? 1 : 0] + SLICESTARTS[upslice ? 1 : 0] + m];
+            }
+            return MOVE_VALUES[SLICESTARTS[upslice ? 1 : 0] + m];
+        }
+
+        function rateAlg(algRaw, W1, W2, W3, W4, W5) {
+            let alg = normalize(algRaw, false, false);
+            const sliceCount = (alg.match(/\//g) || []).length;
+            const r = alg.split("/");
+            r.pop(); // remove last element
+
+            // PHASE 1
+            let ergo_up = 0, ergo_down = 0;
+            let ergo_up_text = "", ergo_down_text = "";
+            let is_top_A = false, odd_slice = true;
+
+            for (let i = 0; i < r.length; i++) {
+                const move = r[i];
+                if (i === 0) {
+                    is_top_A = parseInt(move.split(",")[0]) % 3 !== 0;
+                    odd_slice = true;
+                    continue;
+                }
+                const vu = get_move_value(is_top_A, odd_slice, move);
+                const vd = get_move_value(is_top_A, !odd_slice, move);
+                ergo_up += vu;
+                ergo_down += vd;
+                ergo_up_text += vu + "+";
+                ergo_down_text += vd + "+";
+                is_top_A = is_top_A !== (parseInt(move.split(",")[0]) % 3 !== 0);
+                odd_slice = !odd_slice;
+            }
+
+            const PHASE1 = W1 * Math.max(ergo_up, ergo_down) / sliceCount;
+            let master_text = `${W1} * (${(ergo_up >= ergo_down ? ergo_up_text : ergo_down_text).slice(0, -1)}) / ${sliceCount} slices`;
+            if (Math.abs(ergo_up - ergo_down) >= 10) {
+                alg = alg.replace("/", ergo_up > ergo_down ? "/" : "\\");
+            } else {
+                alg = alg.replace("/", " ");
+            }
+
+            // PHASE 2
+            const PHASE2 = W2 * sliceCount;
+            master_text += ` - ${W2} * ${sliceCount} slices`;
+
+            // PHASE 3
+            const moves = r.slice(1); // remove first alg element
+            let total_movement = total_bonus = 0;
+            for (let i = 0; i < moves.length - 1; i++) {
+                let [movement, bonus] = add_moves(moves[i], moves[i + 1]);
+                total_movement += movement;
+                total_bonus += bonus * W5;
+            }
+            const PHASE3 = W3 * total_movement / sliceCount;
+            const PHASE4 = total_bonus / sliceCount;
+            master_text += ` - ${W3} * ${total_movement} moves / ${sliceCount} slices`;
+            master_text += ` + ${total_bonus} bonus / ${sliceCount} slices + ${W4}`;
+
+            const FINAL = (PHASE1 - PHASE2 - PHASE3 + total_bonus + W4).toFixed(2);
+
+            return { alg, FINAL, master_text };
+        }
+
+        // ============================================================
+        // UI
+        // ============================================================
+
+        let chart = null;
+        let sortEnabled = false;
+        let chartAlgs = [];
+
+        function initChart() {
+            const ctx = document.getElementById("algChart").getContext("2d");
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "FINAL",
+                        data: [],
+                        backgroundColor: [],
+                        borderColor: [],
+                        borderWidth: 1,
+                        borderRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: { duration: 200 },
+                    scales: {
+                        y: {
+                            min: -400,
+                            max: 500,
+                            grid: { color: "#1e2330" },
+                            ticks: {
+                                color: "#4a5568",
+                                font: { family: "IBM Plex Mono", size: 11 }
+                            },
+                            border: { color: "#1e2330" }
+                        },
+                        x: {
+                            grid: { color: "#1e2330" },
+                            ticks: {
+                                color: "#4a5568",
+                                font: { family: "IBM Plex Mono", size: 10 },
+                                maxRotation: 0,
+                            },
+                            border: { color: "#1e2330" }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: "#111318",
+                            borderColor: "#1e2330",
+                            borderWidth: 1,
+                            titleColor: "#00e5a0",
+                            bodyColor: "#c8d0e0",
+                            titleFont: { family: "Space Mono", size: 11 },
+                            bodyFont: { family: "IBM Plex Mono", size: 11 },
+                            callbacks: {
+                                title: (items) => `ALG #${items[0].label}`,
+                                label: (item) => {
+                                    const algStr = chartAlgs[item.dataIndex];
+                                    return [
+                                        `FINAL = ${item.raw}`,
+                                        algStr ? algStr : "(error)"
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateUI() {
+            const W1 = parseInt(document.getElementById("w1").value) || 0;
+            const W2 = parseInt(document.getElementById("w2").value) || 0;
+            const W3 = parseInt(document.getElementById("w3").value) || 0;
+            const W4 = parseInt(document.getElementById("w4").value) || 0;
+            const W5 = parseInt(document.getElementById("w5").value) || 0;
+
+            const lines = document.getElementById("algInput").value.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+            const tbody = document.getElementById("resultsBody");
+            tbody.innerHTML = "";
+
+            if (lines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">// awaiting input</td></tr>';
+                chart.data.labels = [];
+                chart.data.datasets[0].data = [];
+                chart.data.datasets[0].backgroundColor = [];
+                chart.data.datasets[0].borderColor = [];
+                chartAlgs = [];
+                chart.update();
+                return;
+            }
+
+            const chartLabels = [];
+            const chartData = [];
+            const chartColors = [];
+            const chartBorders = [];
+
+            const results = lines.map((line, idx) => {
+                try {
+                    const { alg, FINAL, master_text } = rateAlg(line, W1, W2, W3, W4, W5);
+                    return { idx, alg, FINAL: parseFloat(FINAL), master_text, error: null };
+                } catch (e) {
+                    return { idx, alg: null, FINAL: null, master_text: null, error: e.message || "invalid alg" };
+                }
+            });
+
+            const displayOrder = sortEnabled
+                ? [...results].sort((a, b) => {
+                    if (a.FINAL === null) return 1;
+                    if (b.FINAL === null) return -1;
+                    return b.FINAL - a.FINAL;
+                })
+                : results;
+
+            displayOrder.forEach(({ idx, alg, FINAL, master_text, error }) => {
+                const tr = document.createElement("tr");
+                if (!error) {
+                    const finalClass = FINAL >= 0 ? "final-pos" : "final-neg";
+                    tr.innerHTML = `
+        <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
+        <td class="alg-cell">${alg}</td>
+        <td class="num-cell" style="font-size:11px;text-align:left;color:var(--text-dim)">${master_text}</td>
+        <td class="final-cell ${finalClass}">${FINAL > 0 ? "+" : ""}${FINAL.toFixed(2)}</td>
+      `;
+                    chartLabels.push(String(idx + 1));
+                    chartData.push(FINAL);
+                    chartColors.push(FINAL >= 0 ? "rgba(0,229,160,0.25)" : "rgba(255,77,109,0.25)");
+                    chartBorders.push(FINAL >= 0 ? "#00e5a0" : "#ff4d6d");
+                    chartAlgs.push(alg);
+                } else {
+                    tr.innerHTML = `
+        <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
+        <td class="error-cell" colspan="3">// error: ${error}</td>
+      `;
+                    chartLabels.push(String(idx + 1));
+                    chartData.push(null);
+                    chartColors.push("rgba(255,77,109,0.1)");
+                    chartBorders.push("#ff4d6d");
+                    chartAlgs.push(null);
+                }
+                tbody.appendChild(tr);
+            });
+
+            chart.data.labels = chartLabels;
+            chart.data.datasets[0].data = chartData;
+            chart.data.datasets[0].backgroundColor = chartColors;
+            chart.data.datasets[0].borderColor = chartBorders;
+            chartAlgs = chartAlgs;
+            chart.update();
+        }
+
+        function linkSlider(sliderId, numId) {
+            const slider = document.getElementById(sliderId);
+            const num = document.getElementById(numId);
+            slider.addEventListener("input", () => { num.value = slider.value; updateUI(); });
+            num.addEventListener("input", () => {
+                let v = Math.max(0, parseInt(num.value) || 0);
+                slider.value = v;
+                num.value = v;
+                updateUI();
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initChart();
+            linkSlider("w1", "w1num");
+            linkSlider("w2", "w2num");
+            linkSlider("w3", "w3num");
+            linkSlider("w4", "w4num");
+            linkSlider("w5", "w5num");
+            document.getElementById("algInput").addEventListener("input", updateUI);
+            document.getElementById("sortToggle").addEventListener("click", () => {
+                sortEnabled = !sortEnabled;
+                const btn = document.getElementById("sortToggle");
+                btn.textContent = `sort by FINAL: ${sortEnabled ? "ON" : "OFF"}`;
+                btn.classList.toggle("active", sortEnabled);
+                updateUI();
+            });
+            updateUI();
+        });
+    </script>
+</body>
+
+</html>
