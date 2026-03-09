@@ -81,7 +81,7 @@
 
         .layout {
             display: grid;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 300px 1fr;
             grid-template-rows: auto auto;
             min-height: calc(100vh - 57px);
         }
@@ -300,7 +300,9 @@
                 linear-gradient(90deg, var(--grid) 1px, transparent 1px);
             background-size: 40px 40px;
             background-position: -1px -1px;
+            grid-column: 1 / -1;
         }
+
         /* ---- RESULTS TABLE ---- */
         .results-table {
             background: var(--surface);
@@ -386,7 +388,7 @@
             border: 1px solid var(--border);
             padding: 20px;
             position: relative;
-            min-height: 300px;
+            height: 320px;
         }
 
         .chart-title {
@@ -397,8 +399,47 @@
             margin-bottom: 14px;
         }
 
-        canvas {
-            display: block;
+        .layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: auto auto;
+            min-height: calc(100vh - 57px);
+        }
+
+        .error-badge {
+            display: inline-block;
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 14px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .error-badge.good {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .error-badge.mid {
+            color: #f0c040;
+            border-color: #f0c040;
+        }
+
+        .error-badge.bad {
+            color: var(--accent2);
+            border-color: var(--accent2);
+        }
+
+        #resultsCollapse {
+            max-height: 600px;
+        }
+
+        #resultsCollapse.collapsed {
+            max-height: 0 !important;
         }
     </style>
 </head>
@@ -411,55 +452,31 @@
     </div>
 
     <div class="layout">
-        <!-- top-left: alg input -->
-        <div class="alg-panel">
-            <div class="section-label">// Algorithms</div>
-            <textarea id="algInput" placeholder="enter algs here&#10;one per line&#10;e.g. /3,3/-3,0/..."
-                spellcheck="false">
-                0-1\B u' D U' u d' u 01
-                10/(T T') D' (D M' t M' F U2) -10
-                10/W u -5-2 W e -10
-                0-1\T' M' D' U w' 01
-                10\B d u' -4-4 u2' -10
-                10/M' F M' U E M e U2 -10
-                10/D e' F' u' M' u' -10
-                0-1 b' U D' U m' -45 01
-                10/(u M U') d (U' e D') 01
-                10/(U e' u T') u (D e' U) 01
-                10/W u f W' e' -10
-                0-1/b' D' d' d2 01
-                10/(u m' D) d (U' e D') 01
-            </textarea>
-        </div>
 
-        <!-- top-right: results -->
-        <div class="results-panel">
-            <div class="section-label-row">
-                <div class="section-label">// Results</div>
-                <button id="sortToggle" class="sort-btn">sort by FINAL: OFF</button>
+        <!-- left: alg table + weights -->
+        <div class="weights-panel" style="grid-row: 1 / 3;">
+            <div>
+                <div class="section-label" style="margin-bottom:8px;">// Algorithms <span
+                        style="font-size:9px;color:var(--text-dim);letter-spacing:0.05em">— press Enter to add
+                        row</span></div>
+                <div class="results-table" style="max-height:340px;overflow-y:auto;">
+                    <table id="algTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Algorithm</th>
+                                <th>Time (s)</th>
+                                <th style="width:32px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="algTableBody"></tbody>
+                    </table>
+                </div>
+                <button id="addRowBtn"
+                    style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);padding:5px 14px;cursor:pointer;text-transform:uppercase;">+
+                    add row</button>
             </div>
-            <div class="results-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Algorithm (normalized)</th>
-                            <th>Breakdown</th>
-                            <th>FINAL</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultsBody">
-                        <tr>
-                            <td colspan="4" class="empty-state">// awaiting input</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- bottom-left: weights -->
-        <div class="weights-panel">
-            <div class="section-label">// Weights</div>
+            <div class="section-label" style="margin-top:20px;">// Weights</div>
             <div class="slider-group">
                 <div class="slider-row">
                     <div class="slider-row-top">
@@ -513,13 +530,47 @@
             </div>
         </div>
 
-        <!-- bottom-right: graph -->
-        <div class="graph-panel">
-            <div class="section-label">// FINAL Score Graph</div>
-            <div class="chart-wrap">
-                <canvas id="algChart"></canvas>
+        <!-- top-right: results -->
+        <div class="results-panel" style="display:flex;flex-direction:column;gap:16px;">
+            <div>
+                <div class="section-label-row">
+                    <div class="section-label" style="cursor:pointer;user-select:none;" id="resultsToggle">// Results
+                        <span id="resultsChevron" style="color:var(--text-dim);font-size:10px;">▼</span></div>
+                    <button id="sortToggle" class="sort-btn">sort by FINAL: OFF</button>
+                </div>
+                <div id="resultsCollapse" style="overflow:hidden;transition:max-height 0.25s ease;">
+                    <div class="results-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Algorithm (normalized)</th>
+                                    <th>Breakdown</th>
+                                    <th>FINAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody">
+                                <tr>
+                                    <td colspan="4" class="empty-state">// awaiting input</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- bottom-right: graph -->
+        <div class="graph-panel">
+            <div class="section-label-row">
+                <div class="section-label">// FINAL Score Graph</div>
+                <span class="error-badge" id="errorBadge">// calibration error: —</span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="algChart" style="height:280px;"></canvas>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -596,7 +647,7 @@
                 let close1 = CLOSEST[ms[0]];
                 let close2 = CLOSEST[ms[1]];
                 let bonus = parseInt(ms[0]) + parseInt(ms[1]) === 0 ? 1 : 0;
-                if (Math.abs(close1+close2) > 3 &&
+                if (Math.abs(close1 + close2) > 3 &&
                     Math.abs(close1) > 0 && Math.abs(close2) > 0) return [Math.abs(ms[0] + ms[1]), bonus];
                 return [0, bonus];
             })
@@ -712,38 +763,38 @@
         const SLICESTARTS = ["\\", "/"];
 
         const MOVE_VALUES = {
-            "A/0,3": 9,    "a/0,3": 3,    "A\\0,3": 10,   "a\\0,3": 3,
-            "A/0,6": 1,    "a/0,6": 5,    "A\\0,6": 2,    "a\\0,6": 5,
-            "A/0,-3": 9,   "a/0,-3": 6,   "A\\0,-3": 5,   "a\\0,-3": 6,
-            "A/3,0": 7,    "a/3,0": 8,    "A\\3,0": 3,    "a\\3,0": 8,
-            "A/3,3": 4,    "a/3,3": 3,    "A\\3,3": 7,    "a\\3,3": 6,
-            "A/3,6": 1,    "a/3,6": 3,    "A\\3,6": 2,    "a\\3,6": 2,
-            "A/3,-3": 7,   "a/3,-3": 4,   "A\\3,-3": 5,   "a\\3,-3": 3,
-            "A/6,0": 6,    "a/6,0": 2,    "A\\6,0": 7,    "a\\6,0": 2,
-            "A/6,3": 7,    "a/6,3": 1,    "A\\6,3": 8,    "a\\6,3": 1,
-            "A/6,6": 1,    "a/6,6": 0,    "A\\6,6": 3,    "a\\6,6": 1,
-            "A/6,6": 1,    "a/6,6": 0,    "A\\6,6": 3,    "a\\6,6": 1,
-            "A/6,-3": 5,   "a/6,-3": 2,   "A\\6,-3": 3,   "a\\6,-3": 1,
-            "A/-3,0": 3,   "a/-3,0": 10,  "A\\-3,0": 5,   "a\\-3,0": 7,
-            "A/-3,3": 5,   "a/-3,3": 4,   "A\\-3,3": 7,   "a\\-3,3": 5,
-            "A/-3,6": 3,   "a/-3,6": 6,   "A\\-3,6": 3,   "a\\-3,6": 1,
-            "A/-3,-3": 4,  "a/-3,-3": 6,  "A\\-3,-3": 3,  "a\\-3,-3": 3,
-            "/1,-2": 2,    "\\1,-2": 7,   "/-1,2": 9,     "\\-1,2": 5,
-            "/1,-5": 1,    "\\1,-5": 1,   "/-1,5": 5,     "\\-1,5": 2,
-            "/1,4": 4,     "\\1,4": 7,    "/-1,-4": 6,    "\\-1,-4": 2,
-            "/1,1": 2,     "\\1,1": 10,   "/-1,-1": 10,   "\\-1,-1": 2,
-            "/2,-1": 10,   "\\2,-1": 3,   "/-2,1": 7,     "\\-2,1": 9,
-            "/2,2": 5,     "\\2,2": 5,    "/-2,-2": 7,    "\\-2,-2": 2,
-            "/2,5": 5,     "\\2,5": 3,    "/-2,-5": 4,    "\\-2,-5": 4,
-            "/2,-4": 7,    "\\2,-4": 3,   "/-2,4": 6,     "\\-2,4": 8,
-            "/4,4": 3,     "\\4,4": 7,    "/-4,-4": 6,    "\\-4,-4": 2,
-            "/4,1": 3,     "\\4,1": 6,    "/-4,-1": 8,    "\\-4,-1": 2,
-            "/4,-2": 6,    "\\4,-2": 5,   "/-4,2": 8,     "\\-4,2": 6,
-            "/4,-5": 1,    "\\4,-5": 2,   "/-4,5": 7,     "\\-4,5": 3,
-            "/5,5": 1,     "\\5,5": 1,    "/-5,-5": 1,    "\\-5,-5": 0,
-            "/5,2": 3,     "\\5,2": 5,    "/-5,-2": 6,    "\\-5,-2": 7,
-            "/5,-1": 5,    "\\5,-1": 3,   "/-5,1": 6,     "\\-5,1": 7,
-            "/5,-4": 2,    "\\5,-4": 1,   "/-5,4": 6,     "\\-5,4": 7
+            "A/0,3": 18,    "a/0,3": 6,    "A\\0,3": 20,   "a\\0,3": 6,
+            "A/0,6": 2,    "a/0,6": 10,    "A\\0,6": 4,    "a\\0,6": 10,
+            "A/0,-3": 18,   "a/0,-3": 12,   "A\\0,-3": 10,   "a\\0,-3": 12,
+            "A/3,0": 14,    "a/3,0": 16,    "A\\3,0": 6,    "a\\3,0": 16,
+            "A/3,3": 8,    "a/3,3": 6,    "A\\3,3": 14,    "a\\3,3": 12,
+            "A/3,6": 2,    "a/3,6": 6,    "A\\3,6": 4,    "a\\3,6": 4,
+            "A/3,-3": 14,   "a/3,-3": 8,   "A\\3,-3": 10,   "a\\3,-3": 6,
+            "A/6,0": 12,    "a/6,0": 4,    "A\\6,0": 14,    "a\\6,0": 4,
+            "A/6,3": 14,    "a/6,3": 2,    "A\\6,3": 16,    "a\\6,3": 2,
+            "A/6,6": 2,    "a/6,6": 0,    "A\\6,6": 6,    "a\\6,6": 2,
+            "A/6,6": 2,    "a/6,6": 0,    "A\\6,6": 6,    "a\\6,6": 2,
+            "A/6,-3": 10,   "a/6,-3": 4,   "A\\6,-3": 6,   "a\\6,-3": 2,
+            "A/-3,0": 6,   "a/-3,0": 20,  "A\\-3,0": 10,   "a\\-3,0": 14,
+            "A/-3,3": 10,   "a/-3,3": 8,   "A\\-3,3": 14,   "a\\-3,3": 10,
+            "A/-3,6": 6,   "a/-3,6": 12,   "A\\-3,6": 6,   "a\\-3,6": 2,
+            "A/-3,-3": 8,  "a/-3,-3": 12,  "A\\-3,-3": 6,  "a\\-3,-3": 6,
+            "/1,-2": 4,    "\\1,-2": 14,   "/-1,2": 18,     "\\-1,2": 10,
+            "/1,-5": 2,    "\\1,-5": 2,   "/-1,5": 10,     "\\-1,5": 4,
+            "/1,4": 8,     "\\1,4": 14,    "/-1,-4": 12,    "\\-1,-4": 4,
+            "/1,1": 4,     "\\1,1": 20,   "/-1,-1": 20,   "\\-1,-1": 4,
+            "/2,-1": 20,   "\\2,-1": 6,   "/-2,1": 14,     "\\-2,1": 18,
+            "/2,2": 10,     "\\2,2": 10,    "/-2,-2": 14,    "\\-2,-2": 4,
+            "/2,5": 10,     "\\2,5": 6,    "/-2,-5": 8,    "\\-2,-5": 8,
+            "/2,-4": 14,    "\\2,-4": 6,   "/-2,4": 12,     "\\-2,4": 16,
+            "/4,4": 6,     "\\4,4": 14,    "/-4,-4": 12,    "\\-4,-4": 4,
+            "/4,1": 6,     "\\4,1": 12,    "/-4,-1": 16,    "\\-4,-1": 4,
+            "/4,-2": 12,    "\\4,-2": 10,   "/-4,2": 16,     "\\-4,2": 12,
+            "/4,-5": 2,    "\\4,-5": 4,   "/-4,5": 14,     "\\-4,5": 6,
+            "/5,5": 2,     "\\5,5": 2,    "/-5,-5": 2,    "\\-5,-5": 0,
+            "/5,2": 6,     "\\5,2": 10,    "/-5,-2": 12,    "\\-5,-2": 14,
+            "/5,-1": 10,    "\\5,-1": 6,   "/-5,1": 12,     "\\-5,1": 14,
+            "/5,-4": 4,    "\\5,-4": 2,   "/-5,4": 12,     "\\-5,4": 14
         };
 
         function get_move_value(startA, upslice, m) {
@@ -826,36 +877,41 @@
                 type: "bar",
                 data: {
                     labels: [],
-                    datasets: [{
-                        label: "FINAL",
-                        data: [],
-                        backgroundColor: [],
-                        borderColor: [],
-                        borderWidth: 1,
-                        borderRadius: 0,
-                    }]
+                    datasets: [
+                        {
+                            label: "FINAL",
+                            data: [],
+                            backgroundColor: [],
+                            borderColor: [],
+                            borderWidth: 1,
+                            borderRadius: 0,
+                        },
+                        {
+                            label: "Real (normalized)",
+                            data: [],
+                            backgroundColor: "rgba(91,141,238,0.18)",
+                            borderColor: "#5b8dee",
+                            borderWidth: 1,
+                            borderRadius: 0,
+                            borderDash: [4, 2],
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     animation: { duration: 200 },
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             min: -400,
                             max: 500,
                             grid: { color: "#1e2330" },
-                            ticks: {
-                                color: "#4a5568",
-                                font: { family: "IBM Plex Mono", size: 11 }
-                            },
+                            ticks: { color: "#4a5568", font: { family: "IBM Plex Mono", size: 11 } },
                             border: { color: "#1e2330" }
                         },
                         x: {
                             grid: { color: "#1e2330" },
-                            ticks: {
-                                color: "#4a5568",
-                                font: { family: "IBM Plex Mono", size: 10 },
-                                maxRotation: 0,
-                            },
+                            ticks: { color: "#4a5568", font: { family: "IBM Plex Mono", size: 10 }, maxRotation: 0 },
                             border: { color: "#1e2330" }
                         }
                     },
@@ -872,11 +928,9 @@
                             callbacks: {
                                 title: (items) => `ALG #${items[0].label}`,
                                 label: (item) => {
+                                    if (item.datasetIndex === 1) return `Real score (normalized) = ${item.raw !== null ? item.raw.toFixed(2) : "n/a"}`;
                                     const algStr = chartAlgs[item.dataIndex];
-                                    return [
-                                        `FINAL = ${item.raw}`,
-                                        algStr ? algStr : "(error)"
-                                    ];
+                                    return [`FINAL = ${item.raw}`, algStr ? algStr : "(error)"];
                                 }
                             }
                         }
@@ -892,7 +946,17 @@
             const W4 = parseInt(document.getElementById("w4").value) || 0;
             const W5 = parseInt(document.getElementById("w5").value) || 0;
 
-            const lines = document.getElementById("algInput").value.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+            const rows = [...document.querySelectorAll("#algTableBody tr")];
+            const lines = [], gtMap = {};
+
+            rows.forEach(tr => {
+                const alg = tr.querySelector(".cell-alg")?.value.trim() || "";
+                const t = parseFloat(tr.querySelector(".cell-time")?.value.trim());
+                if (alg) {
+                    lines.push(alg);
+                    if (!isNaN(t) && t > 0) gtMap[alg] = t;
+                }
+            });
 
             const tbody = document.getElementById("resultsBody");
             tbody.innerHTML = "";
@@ -903,15 +967,14 @@
                 chart.data.datasets[0].data = [];
                 chart.data.datasets[0].backgroundColor = [];
                 chart.data.datasets[0].borderColor = [];
+                chart.data.datasets[1].data = [];
                 chartAlgs = [];
                 chart.update();
                 return;
             }
 
-            const chartLabels = [];
-            const chartData = [];
-            const chartColors = [];
-            const chartBorders = [];
+            const chartLabels = [], chartData = [], chartColors = [], chartBorders = [];
+            chartAlgs = [];
 
             const results = lines.map((line, idx) => {
                 try {
@@ -935,11 +998,11 @@
                 if (!error) {
                     const finalClass = FINAL >= 0 ? "final-pos" : "final-neg";
                     tr.innerHTML = `
-        <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
-        <td class="alg-cell">${alg}</td>
-        <td class="num-cell" style="font-size:11px;text-align:left;color:var(--text-dim)">${master_text}</td>
-        <td class="final-cell ${finalClass}">${FINAL > 0 ? "+" : ""}${FINAL.toFixed(2)}</td>
-      `;
+                <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
+                <td class="alg-cell">${alg}</td>
+                <td class="num-cell" style="font-size:11px;text-align:left;color:var(--text-dim)">${master_text}</td>
+                <td class="final-cell ${finalClass}">${FINAL > 0 ? "+" : ""}${FINAL.toFixed(2)}</td>
+            `;
                     chartLabels.push(String(idx + 1));
                     chartData.push(FINAL);
                     chartColors.push(FINAL >= 0 ? "rgba(0,229,160,0.25)" : "rgba(255,77,109,0.25)");
@@ -947,9 +1010,9 @@
                     chartAlgs.push(alg);
                 } else {
                     tr.innerHTML = `
-        <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
-        <td class="error-cell" colspan="3">// error: ${error}</td>
-      `;
+                <td class="num-cell" style="color:var(--text-dim)">${idx + 1}</td>
+                <td class="error-cell" colspan="3">// error: ${error}</td>
+            `;
                     chartLabels.push(String(idx + 1));
                     chartData.push(null);
                     chartColors.push("rgba(255,77,109,0.1)");
@@ -963,8 +1026,65 @@
             chart.data.datasets[0].data = chartData;
             chart.data.datasets[0].backgroundColor = chartColors;
             chart.data.datasets[0].borderColor = chartBorders;
-            chartAlgs = chartAlgs;
+
+            const appVals = [], realVals = [], origLines = [];
+            displayOrder.forEach(({ idx, FINAL }) => {
+                if (FINAL === null) return;
+                const t = gtMap[lines[idx]];
+                if (t !== undefined) {
+                    appVals.push(FINAL);
+                    realVals.push(1 / t);
+                    origLines.push(idx);
+                }
+            });
+
+            let shadowData = new Array(displayOrder.length).fill(null);
+            let errorPct = null;
+
+            if (appVals.length >= 2) {
+                const appMean = appVals.reduce((a, b) => a + b, 0) / appVals.length;
+                const realMean = realVals.reduce((a, b) => a + b, 0) / realVals.length;
+                const appRange = Math.max(...appVals) - Math.min(...appVals);
+                const realRange = Math.max(...realVals) - Math.min(...realVals);
+                const scale = realRange > 0 ? appRange / realRange : 1;
+                const normalizedReal = realVals.map(r => appMean + (r - realMean) * scale);
+
+                displayOrder.forEach(({ idx, FINAL }, pos) => {
+                    if (FINAL === null) return;
+                    const ri = origLines.indexOf(idx);
+                    if (ri !== -1) shadowData[pos] = normalizedReal[ri];
+                });
+
+                // const appMean2 = appVals.reduce((a, b) => a + b, 0) / appVals.length;
+                // const normMean2 = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
+                // const errs = [];
+                // for (let i = 0; i < appVals.length; i++) {
+                //     const a = appVals[i] - appMean2;
+                //     const b = normalizedReal[i] - normMean2;
+                //     errs.push(Math.abs(a - b) / (Math.abs(b) || 1));
+                // }
+                const normMean = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
+                errorPct = appVals.reduce((sum, a, i) => {
+                    return sum + Math.abs((a - appMean) - (normalizedReal[i] - normMean));
+                }, 0) / appVals.length;
+                // const meanErr = errs.reduce((a, b) => a + b, 0) / errs.length;
+                // const sd = Math.sqrt(errs.reduce((s, e) => s + (e - meanErr) ** 2, 0) / errs.length);
+                // errorPct = ((meanErr + sd) * 100).toFixed(1);
+                // errorPct = (Math.sqrt(errs.map(x => x ^ 2).reduce((a, b) => a+b)) * 100).toFixed(1)
+            }
+
+            chart.data.datasets[1].data = shadowData;
             chart.update();
+
+            const badge = document.getElementById("errorBadge");
+            if (errorPct === null) {
+                badge.textContent = "// calibration error: —";
+                badge.className = "error-badge";
+            } else {
+                const e = parseFloat(errorPct);
+                badge.textContent = `// avg error: ${errorPct}%`;
+                badge.className = "error-badge " + (e < 10 ? "good" : e < 25 ? "mid" : "bad");
+            }
         }
 
         function linkSlider(sliderId, numId) {
@@ -979,6 +1099,20 @@
             });
         }
 
+        const DEFAULT_GT = `0-1\\B u' D U' u d' u 01 | 1.55
+10/(T T') D' (D M' t M' F U2) -10 | 2.07
+10/W u -5-2 W e -10 | 1.39
+0-1\\T' M' D' U w' 01 | 1.2
+10\\B d u' -4-4 u2' -10 | 1.34
+10/M' F M' U E M e U2 -10 | 2.18
+10/D e' F' u' M' u' -10 | 1.32
+0-1 b' U D' U m' -45 01 | 1.77
+10/(u M U') d (U' e D') 01 | 1.54
+10/(U e' u T') u (D e' U) 01 | 1.85
+10/W u f W' e' -10 | 1.41
+0-1/b' D' d' d2 01 | 1.08
+10/(u m' D) d (U' e D') 01 | 1.42`;
+
         document.addEventListener("DOMContentLoaded", () => {
             initChart();
             linkSlider("w1", "w1num");
@@ -986,7 +1120,89 @@
             linkSlider("w3", "w3num");
             linkSlider("w4", "w4num");
             linkSlider("w5", "w5num");
-            document.getElementById("algInput").addEventListener("input", updateUI);
+
+            const DEFAULT_ROWS = [
+                ["0-1\\B u' D U' u d' u 01", "1.55"],
+                ["10/(T T') D' (D M' t M' F U2) -10", "2.07"],
+                ["10/W u -5-2 W e -10", "1.39"],
+                ["0-1\\T' M' D' U w' 01", "1.2"],
+                ["10\\B d u' -4-4 u2' -10", "1.34"],
+                ["10/M' F M' U E M e U2 -10", "2.18"],
+                ["10/D e' F' u' M' u' -10", "1.32"],
+                ["0-1 b' U D' U m' -45 01", "1.77"],
+                ["10/(u M U') d (U' e D') 01", "1.54"],
+                ["10/(U e' u T') u (D e' U) 01", "1.85"],
+                ["10/W u f W' e' -10", "1.41"],
+                ["0-1/b' D' d' d2 01", "1.08"],
+                ["10/(u m' D) d (U' e D') 01", "1.42"],
+            ];
+
+            function addRow(algVal = "", timeVal = "") {
+                const tbody = document.getElementById("algTableBody");
+                const idx = tbody.children.length + 1;
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+            <td class="num-cell" style="color:var(--text-dim)">${idx}</td>
+            <td><input class="cell-alg" type="text" value="${algVal.replace(/"/g, '&quot;')}" spellcheck="false" style="width:100%;background:transparent;border:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;outline:none;padding:2px 4px;" placeholder="enter alg..." /></td>
+            <td><input class="cell-time" type="number" step="0.01" value="${timeVal}" style="width:70px;background:transparent;border:none;color:var(--text-bright);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;padding:2px 4px;text-align:right;" placeholder="—" /></td>
+            <td style="text-align:center"><span class="del-row" style="color:var(--text-dim);cursor:pointer;font-size:13px;user-select:none;" title="remove">×</span></td>
+        `;
+                tr.querySelector(".cell-alg").addEventListener("input", () => { saveRows(); updateUI(); });
+                tr.querySelector(".cell-time").addEventListener("input", () => { saveRows(); updateUI(); });
+                tr.querySelector(".cell-alg").addEventListener("keydown", e => {
+                    if (e.key === "Enter") { e.preventDefault(); addRow(); setTimeout(() => tbody.lastElementChild.querySelector(".cell-alg").focus(), 0); }
+                });
+                tr.querySelector(".del-row").addEventListener("click", () => { tr.remove(); renumberRows(); saveRows(); updateUI(); });
+                tbody.appendChild(tr);
+            }
+
+            function renumberRows() {
+                [...document.querySelectorAll("#algTableBody tr")].forEach((tr, i) => {
+                    tr.querySelector(".num-cell").textContent = i + 1;
+                });
+            }
+
+            function saveRows() {
+                const rows = [...document.querySelectorAll("#algTableBody tr")].map(tr => ({
+                    alg: tr.querySelector(".cell-alg")?.value || "",
+                    time: tr.querySelector(".cell-time")?.value || ""
+                }));
+                localStorage.setItem("algRaterRows", JSON.stringify(rows));
+            }
+
+            function loadRows() {
+                try {
+                    const saved = JSON.parse(localStorage.getItem("algRaterRows"));
+                    if (saved && saved.length) { saved.forEach(r => addRow(r.alg, r.time)); return; }
+                } catch (e) { }
+                DEFAULT_ROWS.forEach(([a, t]) => addRow(a, t));
+            }
+
+            loadRows();
+
+            document.getElementById("addRowBtn").addEventListener("click", () => {
+                addRow();
+                setTimeout(() => document.querySelectorAll("#algTableBody .cell-alg")[document.querySelectorAll("#algTableBody .cell-alg").length - 1].focus(), 0);
+            });
+
+            const collapse = document.getElementById("resultsCollapse");
+            const chevron = document.getElementById("resultsChevron");
+            const graphPanel = document.querySelector(".graph-panel");
+            let resultsOpen = true;
+            document.getElementById("resultsToggle").addEventListener("click", () => {
+                resultsOpen = !resultsOpen;
+                collapse.classList.toggle("collapsed", !resultsOpen);
+                chevron.textContent = resultsOpen ? "▼" : "▶";
+                if (!resultsOpen) {
+                    graphPanel.style.gridRow = "2 / 4";
+                    graphPanel.style.gridColumn = "2 / 3";
+                } else {
+                    graphPanel.style.gridRow = "";
+                    graphPanel.style.gridColumn = "1 / -1";
+                }
+                chart.resize();
+            });
+
             document.getElementById("sortToggle").addEventListener("click", () => {
                 sortEnabled = !sortEnabled;
                 const btn = document.getElementById("sortToggle");
@@ -994,6 +1210,7 @@
                 btn.classList.toggle("active", sortEnabled);
                 updateUI();
             });
+
             updateUI();
         });
     </script>
