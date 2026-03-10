@@ -389,6 +389,14 @@
             padding: 20px;
             position: relative;
             height: 320px;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .chart-inner {
+            position: relative;
+            height: 280px;
+            min-width: 100%;
         }
 
         .chart-title {
@@ -476,15 +484,19 @@
                     style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);padding:5px 14px;cursor:pointer;text-transform:uppercase;">+
                     add row</button>
             </div>
-            <div class="section-label" style="margin-top:20px;">// Weights</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;margin-bottom:2px;">
+                <div class="section-label" style="margin-bottom:0">// Weights</div>
+                <button id="optimizeBtn" class="sort-btn">⚙ optimize</button>
+            </div>
+            <div id="optimizeOut" style="display:none;background:var(--bg);border:1px solid var(--border);padding:8px 10px;font-size:10px;line-height:1.9;color:var(--text-dim);margin-bottom:8px;max-height:160px;overflow-y:auto;"></div>
             <div class="slider-group">
                 <div class="slider-row">
                     <div class="slider-row-top">
                         <span class="slider-name slider-color-1">WEIGHT<sub>1</sub> <em>ergonomics</em></span>
-                        <input type="number" class="slider-num c1" id="w1num" min="0" max="100" value="15" />
+                        <input type="number" class="slider-num c1" id="w1num" min="0" max="100" value="6" />
                     </div>
                     <div class="slider-track">
-                        <input type="range" id="w1" min="0" max="100" value="15" />
+                        <input type="range" id="w1" min="0" max="100" value="6" />
                     </div>
                 </div>
 
@@ -501,20 +513,20 @@
                 <div class="slider-row">
                     <div class="slider-row-top">
                         <span class="slider-name slider-color-3">WEIGHT<sub>3</sub> <em>movement</em></span>
-                        <input type="number" class="slider-num c3" id="w3num" min="0" max="100" value="10" />
+                        <input type="number" class="slider-num c3" id="w3num" min="0" max="100" value="30" />
                     </div>
                     <div class="slider-track">
-                        <input type="range" class="w3" id="w3" min="0" max="100" value="10" />
+                        <input type="range" class="w3" id="w3" min="0" max="100" value="30" />
                     </div>
                 </div>
 
                 <div class="slider-row">
                     <div class="slider-row-top">
                         <span class="slider-name slider-color-4">WEIGHT<sub>4</sub> <em>constant</em></span>
-                        <input type="number" class="slider-num c4" id="w4num" min="0" max="1000" value="900" />
+                        <input type="number" class="slider-num c4" id="w4num" min="0" max="1000" value="790" />
                     </div>
                     <div class="slider-track">
-                        <input type="range" class="w4" id="w4" min="0" max="1000" value="900" />
+                        <input type="range" class="w4" id="w4" min="0" max="1000" value="790" />
                     </div>
                 </div>
 
@@ -538,7 +550,7 @@
                         <span id="resultsChevron" style="color:var(--text-dim);font-size:10px;">▼</span></div>
                     <button id="sortToggle" class="sort-btn">sort by FINAL: OFF</button>
                 </div>
-                <div id="resultsCollapse" style="overflow:hidden;transition:max-height 0.25s ease;">
+                <div id="resultsCollapse" style="overflow:hidden;transition:max-height 0.25s ease;overflow-y:scroll;">
                     <div class="results-table">
                         <table>
                             <thead>
@@ -567,7 +579,9 @@
                 <span class="error-badge" id="errorBadge">// calibration error: —</span>
             </div>
             <div class="chart-wrap">
-                <canvas id="algChart" style="height:280px;"></canvas>
+                <div class="chart-inner" id="chartInner">
+                    <canvas id="algChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -643,14 +657,23 @@
             const b = m2.split(",").map(Number);
             const top = [a[0], b[0]];
             const bottom = [a[1], b[1]];
-            const [[finalU, bonusU], [finalD, bonusD]] = [top, bottom].map((ms) => {
-                let close1 = CLOSEST[ms[0]];
-                let close2 = CLOSEST[ms[1]];
-                let bonus = parseInt(ms[0]) + parseInt(ms[1]) === 0 ? 1 : 0;
-                if (Math.abs(close1 + close2) > 3 &&
-                    Math.abs(close1) > 0 && Math.abs(close2) > 0) return [Math.abs(ms[0] + ms[1]), bonus];
-                return [0, bonus];
-            })
+            let finalU, finalD;
+            let close1 = top[0] === 6 ? -6 : CLOSEST[top[0]];
+            if (top[0] === 6) top[0] = -6;
+            let close2 = top[1] === 6 ? -6 : CLOSEST[top[1]];
+            if (top[1] === 6) top[1] = -6;
+            const bonusU = parseInt(top[0]) + parseInt(top[1]) === 0 && Math.abs(parseInt(top[0])) !== 1 ? 1 : 0;
+            if (Math.abs(close1 + close2) > 3 &&
+                Math.abs(close1) > 0 && Math.abs(close2) > 0) {finalU = Math.abs(top[0] + top[1]);}
+            else {finalU = 0;}
+
+            close1 = CLOSEST[bottom[0]];
+            close2 = CLOSEST[bottom[1]];
+            const bonusD = parseInt(bottom[0]) + parseInt(bottom[1]) === 0 && Math.abs(parseInt(bottom[0])) !== 1 ? 1 : 0;
+            if (Math.abs(close1 + close2) > 3 &&
+                Math.abs(close1) > 0 && Math.abs(close2) > 0) {finalD = Math.abs(bottom[0] + bottom[1]);}
+            else {finalD = 0;}
+            // })
             return [finalU + finalD, bonusU + bonusD];
         }
 
@@ -665,7 +688,7 @@
         ];
 
         const CLOSEST = {
-            "-5": 6, "-4": -3, "-3": -3, "-2": -3, "-1": 0, "0": 0,
+            "-5": -6, "-4": -3, "-3": -3, "-2": -3, "-1": 0, "0": 0,
             "1": 0, "2": 3, "3": 3, "4": 3, "5": 6, "6": 6
         };
 
@@ -763,38 +786,40 @@
         const SLICESTARTS = ["\\", "/"];
 
         const MOVE_VALUES = {
-            "A/0,3": 18,    "a/0,3": 6,    "A\\0,3": 20,   "a\\0,3": 6,
-            "A/0,6": 2,    "a/0,6": 10,    "A\\0,6": 4,    "a\\0,6": 10,
-            "A/0,-3": 18,   "a/0,-3": 12,   "A\\0,-3": 10,   "a\\0,-3": 12,
-            "A/3,0": 14,    "a/3,0": 16,    "A\\3,0": 6,    "a\\3,0": 16,
-            "A/3,3": 8,    "a/3,3": 6,    "A\\3,3": 14,    "a\\3,3": 12,
+            // 5 is mediocre
+            "A/0,3": 16,   "a/0,3": 5,    "A\\0,3": 17,   "a\\0,3": 5,
+            "A/0,6": 1,    "a/0,6": 5,    "A\\0,6": 1,    "a\\0,6": 10,
+            "A/0,-3": 18,  "a/0,-3": 12,  "A\\0,-3": 9,   "a\\0,-3": 3,
+            "A/3,0": 16,   "a/3,0": 18,   "A\\3,0": 6,    "a\\3,0": 17,
+            "A/3,3": 13,   "a/3,3": 10,   "A\\3,3": 14,   "a\\3,3": 11,
+            
             "A/3,6": 2,    "a/3,6": 6,    "A\\3,6": 4,    "a\\3,6": 4,
-            "A/3,-3": 14,   "a/3,-3": 8,   "A\\3,-3": 10,   "a\\3,-3": 6,
-            "A/6,0": 12,    "a/6,0": 4,    "A\\6,0": 14,    "a\\6,0": 4,
-            "A/6,3": 14,    "a/6,3": 2,    "A\\6,3": 16,    "a\\6,3": 2,
+            "A/3,-3": 14,  "a/3,-3": 8,   "A\\3,-3": 10,  "a\\3,-3": 6,
+            "A/6,0": 12,   "a/6,0": 4,    "A\\6,0": 14,   "a\\6,0": 4,
+            "A/6,3": 14,   "a/6,3": 2,    "A\\6,3": 16,   "a\\6,3": 2,
             "A/6,6": 2,    "a/6,6": 0,    "A\\6,6": 6,    "a\\6,6": 2,
             "A/6,6": 2,    "a/6,6": 0,    "A\\6,6": 6,    "a\\6,6": 2,
-            "A/6,-3": 10,   "a/6,-3": 4,   "A\\6,-3": 6,   "a\\6,-3": 2,
-            "A/-3,0": 6,   "a/-3,0": 20,  "A\\-3,0": 10,   "a\\-3,0": 14,
-            "A/-3,3": 10,   "a/-3,3": 8,   "A\\-3,3": 14,   "a\\-3,3": 10,
-            "A/-3,6": 6,   "a/-3,6": 12,   "A\\-3,6": 6,   "a\\-3,6": 2,
-            "A/-3,-3": 8,  "a/-3,-3": 12,  "A\\-3,-3": 6,  "a\\-3,-3": 6,
-            "/1,-2": 4,    "\\1,-2": 14,   "/-1,2": 18,     "\\-1,2": 10,
-            "/1,-5": 2,    "\\1,-5": 2,   "/-1,5": 10,     "\\-1,5": 4,
-            "/1,4": 8,     "\\1,4": 14,    "/-1,-4": 12,    "\\-1,-4": 4,
+            "A/6,-3": 10,  "a/6,-3": 4,   "A\\6,-3": 6,   "a\\6,-3": 2,
+            "A/-3,0": 6,   "a/-3,0": 20,  "A\\-3,0": 10,  "a\\-3,0": 14,
+            "A/-3,3": 10,  "a/-3,3": 8,   "A\\-3,3": 14,  "a\\-3,3": 10,
+            "A/-3,6": 6,   "a/-3,6": 12,  "A\\-3,6": 6,   "a\\-3,6": 2,
+            "A/-3,-3": 8,  "a/-3,-3": 12, "A\\-3,-3": 6,  "a\\-3,-3": 6,
+            "/1,-2": 4,    "\\1,-2": 14,  "/-1,2": 18,    "\\-1,2": 10,
+            "/1,-5": 2,    "\\1,-5": 2,   "/-1,5": 10,    "\\-1,5": 4,
+            "/1,4": 8,     "\\1,4": 14,   "/-1,-4": 12,   "\\-1,-4": 4,
             "/1,1": 4,     "\\1,1": 20,   "/-1,-1": 20,   "\\-1,-1": 4,
-            "/2,-1": 20,   "\\2,-1": 6,   "/-2,1": 14,     "\\-2,1": 18,
-            "/2,2": 10,     "\\2,2": 10,    "/-2,-2": 14,    "\\-2,-2": 4,
-            "/2,5": 10,     "\\2,5": 6,    "/-2,-5": 8,    "\\-2,-5": 8,
-            "/2,-4": 14,    "\\2,-4": 6,   "/-2,4": 12,     "\\-2,4": 16,
-            "/4,4": 6,     "\\4,4": 14,    "/-4,-4": 12,    "\\-4,-4": 4,
-            "/4,1": 6,     "\\4,1": 12,    "/-4,-1": 16,    "\\-4,-1": 4,
-            "/4,-2": 12,    "\\4,-2": 10,   "/-4,2": 16,     "\\-4,2": 12,
-            "/4,-5": 2,    "\\4,-5": 4,   "/-4,5": 14,     "\\-4,5": 6,
+            "/2,-1": 20,   "\\2,-1": 6,   "/-2,1": 14,    "\\-2,1": 18,
+            "/2,2": 10,    "\\2,2": 10,   "/-2,-2": 14,   "\\-2,-2": 4,
+            "/2,5": 10,    "\\2,5": 6,    "/-2,-5": 8,    "\\-2,-5": 8,
+            "/2,-4": 14,   "\\2,-4": 6,   "/-2,4": 12,    "\\-2,4": 16,
+            "/4,4": 6,     "\\4,4": 14,   "/-4,-4": 12,   "\\-4,-4": 4,
+            "/4,1": 6,     "\\4,1": 12,   "/-4,-1": 16,   "\\-4,-1": 4,
+            "/4,-2": 12,   "\\4,-2": 10,  "/-4,2": 16,    "\\-4,2": 12,
+            "/4,-5": 2,    "\\4,-5": 4,   "/-4,5": 14,    "\\-4,5": 6,
             "/5,5": 2,     "\\5,5": 2,    "/-5,-5": 2,    "\\-5,-5": 0,
-            "/5,2": 6,     "\\5,2": 10,    "/-5,-2": 12,    "\\-5,-2": 14,
-            "/5,-1": 10,    "\\5,-1": 6,   "/-5,1": 12,     "\\-5,1": 14,
-            "/5,-4": 4,    "\\5,-4": 2,   "/-5,4": 12,     "\\-5,4": 14
+            "/5,2": 6,     "\\5,2": 10,   "/-5,-2": 12,   "\\-5,-2": 14,
+            "/5,-1": 10,   "\\5,-1": 6,   "/-5,1": 12,    "\\-5,1": 14,
+            "/5,-4": 4,    "\\5,-4": 2,   "/-5,4": 12,    "\\-5,4": 14
         };
 
         function get_move_value(startA, upslice, m) {
@@ -864,6 +889,104 @@
         }
 
         // ============================================================
+        // OPTIMIZER
+        // ============================================================
+
+        function computeErrorForWeights(w1, w2, w3, w5) {
+            const W4 = parseInt(document.getElementById("w4").value) || 0;
+            const rows = [...document.querySelectorAll("#algTableBody tr")];
+            const lines = [], gtMap = {};
+            rows.forEach(tr => {
+                const alg = tr.querySelector(".cell-alg")?.value.trim() || "";
+                const t = parseFloat(tr.querySelector(".cell-time")?.value.trim());
+                if (alg) { lines.push(alg); if (!isNaN(t) && t > 0) gtMap[alg] = t; }
+            });
+            const appVals = [], realVals = [];
+            lines.forEach(line => {
+                try {
+                    const { FINAL } = rateAlg(line, w1, w2, w3, W4, w5);
+                    const t = gtMap[line];
+                    if (t !== undefined) { appVals.push(parseFloat(FINAL)); realVals.push(-Math.log(t)); }
+                } catch(e) {}
+            });
+            if (appVals.length < 2) return Infinity;
+            let concordant = 0, discordant = 0;
+            for (let i = 0; i < appVals.length; i++) {
+                for (let j = i + 1; j < appVals.length; j++) {
+                    const appSign = Math.sign(appVals[i] - appVals[j]);
+                    const realSign = Math.sign(realVals[i] - realVals[j]);
+                    if (appSign === realSign && appSign !== 0) concordant++;
+                    else if (appSign !== realSign && appSign !== 0 && realSign !== 0) discordant++;
+                }
+            }
+            const tau = (concordant + discordant) > 0 ? (concordant - discordant) / (concordant + discordant) : 0;
+            return (1 - tau) / 2 * 100
+        }
+
+        async function optimizeWeights() {
+            const btn = document.getElementById("optimizeBtn");
+            const out = document.getElementById("optimizeOut");
+            btn.textContent = "⚙ running..."; btn.disabled = true;
+            out.style.display = "block"; out.textContent = "// searching...";
+            await new Promise(r => setTimeout(r,0));
+
+            // w4 is a pure offset and does not affect R², so we only tune w1,w2,w3,w5
+            const BOUNDS = [[0,100],[0,100],[0,100],[0,30]];
+            const STEPS = [10, 3, 1];
+            const starts = [[7,100,30,10]];
+            for (let i = 0; i < 100; i++) starts.push(BOUNDS.map(([lo,hi]) => lo + Math.floor(Math.random()*(hi-lo+1))));
+
+            const found = [];
+            for (const start of starts) {
+                let w = [...start];
+                let err = computeErrorForWeights(...w);
+                for (const step of STEPS) {
+                    let improved = true;
+                    while (improved) {
+                        improved = false;
+                        for (let wi = 0; wi < 4; wi++) {
+                            for (const dir of [-1,1]) {
+                                const nw = [...w];
+                                nw[wi] = Math.max(BOUNDS[wi][0], Math.min(BOUNDS[wi][1], w[wi]+dir*step));
+                                if (nw[wi] === w[wi]) continue;
+                                const ne = computeErrorForWeights(...nw);
+                                if (ne < err - 1e-9) { err = ne; w = nw; improved = true; }
+                            }
+                        }
+                    }
+                }
+                found.push({w, err});
+                await new Promise(r => setTimeout(r,0));
+            }
+
+            found.sort((a,b) => a.err-b.err);
+            const unique = [];
+            for (const f of found) {
+                if (!unique.some(u => u.w.every((v,i) => Math.abs(v-f.w[i]) <= 2))) unique.push(f);
+                if (unique.length >= 5) break;
+            }
+
+            out.innerHTML = unique.map((f,i) =>
+                `<span style="color:${i===0?'var(--accent)':'var(--text-bright)'}">#${i+1}</span>` +
+                ` w1=<b>${f.w[0]}</b> w2=<b>${f.w[1]}</b> w3=<b>${f.w[2]}</b> w5=<b>${f.w[3]}</b>` +
+                ` <span style="color:${f.err<10?'var(--accent)':f.err<25?'#f0c040':'var(--accent2)'}">err=${f.err.toFixed(1)}%</span>` +
+                ` <span id="applyOpt${i}" style="color:var(--accent3);cursor:pointer;margin-left:6px;">[apply]</span>`
+            ).join("<br>");
+
+            unique.forEach((f,i) => {
+                document.getElementById(`applyOpt${i}`)?.addEventListener("click", () => {
+                    ["w1","w2","w3","w5"].forEach((id,j) => {
+                        document.getElementById(id).value = f.w[j];
+                        document.getElementById(id+"num").value = f.w[j];
+                    });
+                    updateUI();
+                });
+            });
+
+            btn.textContent = "⚙ optimize"; btn.disabled = false;
+        }
+
+        // ============================================================
         // UI
         // ============================================================
 
@@ -898,13 +1021,13 @@
                     ]
                 },
                 options: {
-                    responsive: true,
+                    responsive: false,
                     animation: { duration: 200 },
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            min: -400,
-                            max: 500,
+                            min: -300,
+                            max: 300,
                             grid: { color: "#1e2330" },
                             ticks: { color: "#4a5568", font: { family: "IBM Plex Mono", size: 11 } },
                             border: { color: "#1e2330" }
@@ -937,6 +1060,16 @@
                     }
                 }
             });
+        }
+
+        const MIN_BAR_WIDTH = 48; // px per bar
+        function resizeChart() {
+            const n = chart.data.labels?.length || 0;
+            const inner = document.getElementById("chartInner");
+            const wrap = inner.parentElement;
+            const minW = n * MIN_BAR_WIDTH;
+            inner.style.width = minW > wrap.clientWidth ? minW + "px" : "100%";
+            chart.resize(inner.clientWidth, 280);
         }
 
         function updateUI() {
@@ -1033,7 +1166,7 @@
                 const t = gtMap[lines[idx]];
                 if (t !== undefined) {
                     appVals.push(FINAL);
-                    realVals.push(1 / t);
+                    realVals.push(-Math.log(t));
                     origLines.push(idx);
                 }
             });
@@ -1042,12 +1175,17 @@
             let errorPct = null;
 
             if (appVals.length >= 2) {
-                const appMean = appVals.reduce((a, b) => a + b, 0) / appVals.length;
-                const realMean = realVals.reduce((a, b) => a + b, 0) / realVals.length;
-                const appRange = Math.max(...appVals) - Math.min(...appVals);
-                const realRange = Math.max(...realVals) - Math.min(...realVals);
-                const scale = realRange > 0 ? appRange / realRange : 1;
-                const normalizedReal = realVals.map(r => appMean + (r - realMean) * scale);
+                // Normalize real vals for shadow display only (visual alignment, not used for error)
+                const robustStats = arr => {
+                    const sorted = [...arr].sort((a,b) => a-b);
+                    const med = sorted.length % 2 ? sorted[sorted.length>>1] : (sorted[(sorted.length>>1)-1]+sorted[sorted.length>>1])/2;
+                    const mad = (() => { const d = arr.map(v => Math.abs(v-med)).sort((a,b)=>a-b); return d.length%2 ? d[d.length>>1] : (d[(d.length>>1)-1]+d[d.length>>1])/2; })();
+                    return [med, mad];
+                };
+                const [appMed, appMAD] = robustStats(appVals);
+                const [realMed, realMAD] = robustStats(realVals);
+                const scale = realMAD > 1e-9 ? appMAD / realMAD : 1;
+                const normalizedReal = realVals.map(r => appMed + (r - realMed) * scale);
 
                 displayOrder.forEach(({ idx, FINAL }, pos) => {
                     if (FINAL === null) return;
@@ -1055,18 +1193,54 @@
                     if (ri !== -1) shadowData[pos] = normalizedReal[ri];
                 });
 
-                // const appMean2 = appVals.reduce((a, b) => a + b, 0) / appVals.length;
-                // const normMean2 = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
+                // const normMean = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
                 // const errs = [];
                 // for (let i = 0; i < appVals.length; i++) {
                 //     const a = appVals[i] - appMean2;
                 //     const b = normalizedReal[i] - normMean2;
                 //     errs.push(Math.abs(a - b) / (Math.abs(b) || 1));
                 // }
-                const normMean = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
-                errorPct = appVals.reduce((sum, a, i) => {
-                    return sum + Math.abs((a - appMean) - (normalizedReal[i] - normMean));
-                }, 0) / appVals.length;
+
+                // mae
+                // const normMean = normalizedReal.reduce((a, b) => a + b, 0) / normalizedReal.length;
+                // errorPct = appVals.reduce((sum, a, i) => {
+                //     return sum + Math.abs((a - appMean) - (normalizedReal[i] - normMean));
+                // }, 0) / appVals.length;
+
+                // rmse
+                // const mse = appVals.reduce((sum, a, i) => {
+                //     const diff = (a - appMean) - (normalizedReal[i] - normMean);
+                //     return sum + diff * diff;
+                // }, 0) / appVals.length;
+                // errorPct = Math.sqrt(mse);
+
+                // SMAPE
+                // errorPct = appVals.reduce((sum, a, i) => {
+                //     const b = normalizedReal[i];
+                //     const denom = (Math.abs(a) + Math.abs(b)) / 2;
+                //     return sum + (denom > 1e-9 ? Math.abs(a - b) / denom : 0);
+                // }, 0) / appVals.length;
+
+                // r2
+                // const ssTot = normalizedReal.reduce((s, b) => s + (b - normMean) ** 2, 0);
+                // const ssRes = appVals.reduce((s, a, i) => s + (a - normalizedReal[i]) ** 2, 0);
+                // const r2 = ssTot > 1e-9 ? 1 - ssRes / ssTot : (ssRes < 1e-9 ? 1 : 0);
+                // errorPct = 100 * (1 - r2); // 0 = perfect, 1 = as bad as predicting the mean
+
+                // Kendall's tau: count concordant vs discordant pairs
+                // concordant = FINAL rank agrees with speed rank (-t, higher=faster=better)
+                let concordant = 0, discordant = 0;
+                for (let i = 0; i < appVals.length; i++) {
+                    for (let j = i + 1; j < appVals.length; j++) {
+                        const appSign = Math.sign(appVals[i] - appVals[j]);
+                        const realSign = Math.sign(realVals[i] - realVals[j]);
+                        if (appSign === realSign && appSign !== 0) concordant++;
+                        else if (appSign !== realSign && appSign !== 0 && realSign !== 0) discordant++;
+                    }
+                }
+                const tau = (concordant + discordant) > 0 ? (concordant - discordant) / (concordant + discordant) : 0;
+                errorPct = ((1 - tau) / 2 * 100).toFixed(1);
+
                 // const meanErr = errs.reduce((a, b) => a + b, 0) / errs.length;
                 // const sd = Math.sqrt(errs.reduce((s, e) => s + (e - meanErr) ** 2, 0) / errs.length);
                 // errorPct = ((meanErr + sd) * 100).toFixed(1);
@@ -1074,6 +1248,7 @@
             }
 
             chart.data.datasets[1].data = shadowData;
+            resizeChart();
             chart.update();
 
             const badge = document.getElementById("errorBadge");
@@ -1083,7 +1258,7 @@
             } else {
                 const e = parseFloat(errorPct);
                 badge.textContent = `// avg error: ${errorPct}%`;
-                badge.className = "error-badge " + (e < 10 ? "good" : e < 25 ? "mid" : "bad");
+                badge.className = "error-badge " + (e < 15 ? "good" : e < 30 ? "mid" : "bad");
             }
         }
 
@@ -1099,19 +1274,69 @@
             });
         }
 
-        const DEFAULT_GT = `0-1\\B u' D U' u d' u 01 | 1.55
-10/(T T') D' (D M' t M' F U2) -10 | 2.07
-10/W u -5-2 W e -10 | 1.39
-0-1\\T' M' D' U w' 01 | 1.2
-10\\B d u' -4-4 u2' -10 | 1.34
-10/M' F M' U E M e U2 -10 | 2.18
-10/D e' F' u' M' u' -10 | 1.32
-0-1 b' U D' U m' -45 01 | 1.77
-10/(u M U') d (U' e D') 01 | 1.54
-10/(U e' u T') u (D e' U) 01 | 1.85
-10/W u f W' e' -10 | 1.41
-0-1/b' D' d' d2 01 | 1.08
-10/(u m' D) d (U' e D') 01 | 1.42`;
+        const DEFAULT_GT = `0-1 B u' D U' u d' u 01 | 1.45
+10/(T T') D' (D M' t M' F U2) -10 | 1.82
+10/W u -5-2 W e -10 | 1.26
+0-1 T' M' D' U w' 01 | 1.04
+10 B d u' -4-4 u2' -10 | 1.13
+10/M' F M' U E M e U2 -10 | 1.86
+10/D e' F' u' M' u' -10 | 1.09
+0-1 b' U D' U m' -45 01 | 1.37
+10/(u M U') d (U' e D') 01 | 1.25
+10/(U e' u T') u (D e' U) 01 | 1.66
+10/W u f W' e' -10 | 1.19
+0-1/b' D' d' d2 01 | 0.96
+10/(u m' D) d (U' e D') 01 | 1.28
+0-1 b' D' F t' 01 | 1.02
+10 U D F3 D -5-2 U2 -10 | 1.80
+10 D M' E u' UU U2 -10 | 1.40
+10 (u m' U E') U' (d M D') -10 | 1.86
+10 W' d -5-2 U2 -10 | 1.16
+0-1 B w' U (U' e D') 01 | 1.54
+0-1 (U' e D') 44 u3 F U2 -10 | 1.80
+10 D e' F' u' M' F U2 -10 | 1.41
+10 e' u e' d' E' U2 -10 | 1.45
+10 M' u' M' m' M' f M' 01 | 1.33
+10 d M D' d b' D' d' d2 01 | 1.55
+0-1 w' B 01 | 0.87
+10 u M t' M F' m' U2 -10 | 1.45
+0-1 u2' u M E d B' 01 | 1.48
+0-1 w' U' f T 01 | 1.049
+0-1 t d e' D 01 | 1.055
+0-1 (U' M u) D (U' e D') 01 | 1.309
+0-1 (U' e D') T' (d M D') -10 | 1.371
+10 u3 t M' D u2' -10 | 1.323
+10 (u m' D) U' (u m' u T') -10 | 1.474
+10 E D W' F' d' M' D u2' U2 -10 | 2.158
+10 u4' m' (u2 u2') | 1.369
+10 B' u d' m u2' -10 | 1.075
+0-1 u2' T b' e 01 | 1.201
+10 w U D' u M U2D -10 | 1.233
+10 u M u M -4-4 M E' -10 | 1.365
+10 (d M F' t) U (U M' F U2) -10 | 1.861
+10 (u m' D) D (d M F' t) -10 | 1.634
+10 (d M F' t) U' (U M' F U2) -10 | 1.858
+10 (d m' U) U (u d' u -54) -10 | 1.452
+10 (W w) U2 (D M' -5-2 U2) -10 | 1.907
+0-1 u2' u U u' T M f' D2 01 | 1.984
+10 (D e' U) f' (U e' D) 01 | 1.497
+10 t' F D' d U' t -10 | 1.248
+10 (U e' u T') d (U e' D) 01 | 1.563
+0-1 (w' W') f (u M u u2') -10 | 1.620
+10 u4 M' (d' M' D) 01 | 1.402
+10 d u' U2 D D u t -10  [8|22] | 1.458
+0-1 e U' D' u2' u m' -45 01  [8|24] | 1.637
+10 d F U' E' U' u d2' -10  [8|22] | 1.897
+10 u m' U' U D' t' d2' -10  [8|22] | 1.763
+10 F' E' d' U' U' u2 e 01  [8|23] | 1.608
+10 U f' E' u' D' d U' 01  [8|22] | 1.63
+10 U' t' U2 e' u3' -10  [8|23] | 1.567
+10 u2 U' U' f2 u2' D 6-3 -10  [9|26] | 1.817
+10 F' U d' m D F D' 36 -10  [9|26] | 1.980
+10 u2 d' D f' F f' D 4-5 -10  [9|25] | 2.13
+10 d f D F' D u' e -36 -10  [9|26] | 2.14
+0-1 U' F D' m D' u' f' d2' -10  [9|26] | 1.92
+0-1 w' E' u' u2 U' u' 5-4 01  [9|28] | 1.89`;
 
         document.addEventListener("DOMContentLoaded", () => {
             initChart();
@@ -1120,22 +1345,9 @@
             linkSlider("w3", "w3num");
             linkSlider("w4", "w4num");
             linkSlider("w5", "w5num");
+            document.getElementById("optimizeBtn").addEventListener("click", optimizeWeights);
 
-            const DEFAULT_ROWS = [
-                ["0-1\\B u' D U' u d' u 01", "1.55"],
-                ["10/(T T') D' (D M' t M' F U2) -10", "2.07"],
-                ["10/W u -5-2 W e -10", "1.39"],
-                ["0-1\\T' M' D' U w' 01", "1.2"],
-                ["10\\B d u' -4-4 u2' -10", "1.34"],
-                ["10/M' F M' U E M e U2 -10", "2.18"],
-                ["10/D e' F' u' M' u' -10", "1.32"],
-                ["0-1 b' U D' U m' -45 01", "1.77"],
-                ["10/(u M U') d (U' e D') 01", "1.54"],
-                ["10/(U e' u T') u (D e' U) 01", "1.85"],
-                ["10/W u f W' e' -10", "1.41"],
-                ["0-1/b' D' d' d2 01", "1.08"],
-                ["10/(u m' D) d (U' e D') 01", "1.42"],
-            ];
+            const DEFAULT_ROWS = DEFAULT_GT.split("\n").map(a => a.split(" | "));
 
             function addRow(algVal = "", timeVal = "") {
                 const tbody = document.getElementById("algTableBody");
@@ -1167,6 +1379,7 @@
                     alg: tr.querySelector(".cell-alg")?.value || "",
                     time: tr.querySelector(".cell-time")?.value || ""
                 }));
+                console.log(rows.map(a => `${a.alg} | ${a.time}`).join("\n"))
                 localStorage.setItem("algRaterRows", JSON.stringify(rows));
             }
 
@@ -1200,7 +1413,8 @@
                     graphPanel.style.gridRow = "";
                     graphPanel.style.gridColumn = "1 / -1";
                 }
-                chart.resize();
+                resizeChart();
+                chart.update();
             });
 
             document.getElementById("sortToggle").addEventListener("click", () => {
